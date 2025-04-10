@@ -26,8 +26,15 @@ for symbol in stocks:
         st.warning(f"No data found for {symbol}")
         continue
 
-    # Feature Engineering with safe operations
-    df = df.dropna(subset=["Open", "Close", "Volume"])  # ensure required columns exist
+    # Safe column check
+    required_columns = {"Open", "Close", "Volume", "High", "Low"}
+    missing_cols = required_columns - set(df.columns)
+    if missing_cols:
+        st.warning(f"{symbol} is missing required columns: {missing_cols}. Skipping...")
+        continue
+    df = df.dropna(subset=list(required_columns))
+
+    # Feature Engineering
     df['Price_Change'] = df['Close'] - df['Open']
     df['Percent_Change'] = (df['Price_Change'] / df['Open'].replace(0, np.nan)) * 100
     df['MA5'] = df['Close'].rolling(window=5).mean()
