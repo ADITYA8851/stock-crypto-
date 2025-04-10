@@ -77,7 +77,7 @@ for symbol in stocks:
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("Close Price Histogram")
-    fig_hist, ax = plt.subplots()
+    fig_hist, ax = plt.subplots(figsize=(6, 3))
     sns.histplot(df['Close'], bins=30, kde=True, ax=ax)
     ax.set_title("Close Price Distribution")
     st.pyplot(fig_hist)
