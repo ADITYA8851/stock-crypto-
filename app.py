@@ -22,19 +22,16 @@ for symbol in stocks:
     df = yf.download(symbol, period=period)
     df.reset_index(inplace=True)
 
-    # Flatten MultiIndex columns if necessary
+    # Robust flattening of MultiIndex columns
     if isinstance(df.columns, pd.MultiIndex):
-        df.columns = [' '.join(col).strip() if isinstance(col, tuple) else col for col in df.columns]
+        df.columns = [col[0] if col[1] == '' else f"{col[0]}_{col[1]}" for col in df.columns]
 
-    # Rename prefixed columns back to expected names
-    column_map = {
-        f"{symbol} Open": "Open",
-        f"{symbol} High": "High",
-        f"{symbol} Low": "Low",
-        f"{symbol} Close": "Close",
-        f"{symbol} Volume": "Volume",
-    }
-    df.rename(columns=column_map, inplace=True)
+    # Attempt to rename columns to standard names
+    standard_cols = ["Open", "High", "Low", "Close", "Volume"]
+    for col in standard_cols:
+        for df_col in df.columns:
+            if col.lower() in df_col.lower() and col not in df.columns:
+                df.rename(columns={df_col: col}, inplace=True)
 
     if df.empty:
         st.warning(f"No data found for {symbol}")
