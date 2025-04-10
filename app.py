@@ -4,6 +4,7 @@ import yfinance as yf
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
@@ -25,9 +26,10 @@ for symbol in stocks:
         st.warning(f"No data found for {symbol}")
         continue
 
-    # Feature Engineering
+    # Feature Engineering with safe operations
+    df = df.dropna(subset=["Open", "Close", "Volume"])  # ensure required columns exist
     df['Price_Change'] = df['Close'] - df['Open']
-    df['Percent_Change'] = (df['Price_Change'] / df['Open']) * 100
+    df['Percent_Change'] = (df['Price_Change'] / df['Open'].replace(0, np.nan)) * 100
     df['MA5'] = df['Close'].rolling(window=5).mean()
     df['MA10'] = df['Close'].rolling(window=10).mean()
     df['Volume_Change'] = df['Volume'].pct_change()
