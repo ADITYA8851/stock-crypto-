@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
 st.set_page_config(page_title="Enhanced Finance Prediction App", layout="wide")
-st.title("📈Finance Prediction App")
+st.title("📈AI-DRIVEN PREDICTION IN FINANCE")
 
 # Extended stock options
 stock_options = ["AAPL", "GOOGL", "BTC-USD", "^BSESN", "ADANIENT.NS", "^NSEI"]
