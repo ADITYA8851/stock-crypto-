@@ -12,7 +12,7 @@ from sklearn.metrics import accuracy_score
 st.set_page_config(page_title="Enhanced Finance Prediction App", layout="wide")
 st.title("📈 Enhanced Finance Prediction App")
 
-# Add additional stocks (Sensex, Adani, Nifty50)
+# Extended stock options
 stock_options = ["AAPL", "GOOGL", "BTC-USD", "^BSESN", "ADANIENT.NS", "^NSEI"]
 stocks = st.multiselect("Select stocks to analyze", stock_options, default=stock_options[:2])
 period = st.selectbox("Select historical period", ["1mo", "3mo", "6mo", "1y", "2y"], index=2)
@@ -25,7 +25,6 @@ for symbol in stocks:
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = [col[0] if col[1] == '' else f"{col[0]}_{col[1]}" for col in df.columns]
 
-    # Rename common columns
     standard_cols = ["Open", "High", "Low", "Close", "Volume"]
     for col in standard_cols:
         for df_col in df.columns:
@@ -44,7 +43,7 @@ for symbol in stocks:
 
     df = df.dropna(subset=list(required_columns))
 
-    # Enhanced Feature Engineering
+    # Feature Engineering
     df['Price_Change'] = df['Close'] - df['Open']
     df['Percent_Change'] = (df['Price_Change'] / df['Open'].replace(0, np.nan)) * 100
     df['High_Low_Spread'] = (df['High'] - df['Low']) / df['Low'].replace(0, np.nan)
@@ -54,11 +53,17 @@ for symbol in stocks:
     df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int)
     df.dropna(inplace=True)
 
+    # Prepare Features
     features = ['Percent_Change', 'MA5', 'MA10', 'Volume_Change', 'High_Low_Spread']
-    X = df[features]
-    y = df['Target']
+    X = df[features].replace([np.inf, -np.inf], np.nan).dropna()
+    y = df['Target'].loc[X.index]
 
-    # Train XGBoost model
+    # Skip if not enough data
+    if X.shape[0] < 10:
+        st.warning(f"Not enough clean data to analyze {symbol}.")
+        continue
+
+    # Model training with XGBoost
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     model = XGBClassifier(n_estimators=100, learning_rate=0.1, max_depth=5, use_label_encoder=False, eval_metric='logloss')
     model.fit(X_train, y_train)
