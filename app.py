@@ -5,15 +5,15 @@ import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
-st.set_page_config(page_title="Finance Prediction App", layout="wide")
-st.title("📈 Finance Prediction App")
+st.set_page_config(page_title="Enhanced Finance Prediction App", layout="wide")
+st.title("📈 Enhanced Finance Prediction App")
 
-# Select stocks
-stock_options = ["AAPL", "GOOGL", "BTC-USD"]
+# Add additional stocks (Sensex, Adani, Nifty50)
+stock_options = ["AAPL", "GOOGL", "BTC-USD", "^BSESN", "ADANIENT.NS", "^NSEI"]
 stocks = st.multiselect("Select stocks to analyze", stock_options, default=stock_options[:2])
 period = st.selectbox("Select historical period", ["1mo", "3mo", "6mo", "1y", "2y"], index=2)
 
@@ -22,11 +22,10 @@ for symbol in stocks:
     df = yf.download(symbol, period=period)
     df.reset_index(inplace=True)
 
-    # Robust flattening of MultiIndex columns
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = [col[0] if col[1] == '' else f"{col[0]}_{col[1]}" for col in df.columns]
 
-    # Attempt to rename columns to standard names
+    # Rename common columns
     standard_cols = ["Open", "High", "Low", "Close", "Volume"]
     for col in standard_cols:
         for df_col in df.columns:
@@ -37,51 +36,68 @@ for symbol in stocks:
         st.warning(f"No data found for {symbol}")
         continue
 
-    # Safe column check
     required_columns = {"Open", "Close", "Volume", "High", "Low"}
     missing_cols = required_columns - set(df.columns)
     if missing_cols:
         st.warning(f"{symbol} is missing required columns: {missing_cols}. Skipping...")
         continue
+
     df = df.dropna(subset=list(required_columns))
 
-    # Feature Engineering
+    # Enhanced Feature Engineering
     df['Price_Change'] = df['Close'] - df['Open']
     df['Percent_Change'] = (df['Price_Change'] / df['Open'].replace(0, np.nan)) * 100
+    df['High_Low_Spread'] = (df['High'] - df['Low']) / df['Low'].replace(0, np.nan)
     df['MA5'] = df['Close'].rolling(window=5).mean()
     df['MA10'] = df['Close'].rolling(window=10).mean()
     df['Volume_Change'] = df['Volume'].pct_change()
     df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int)
     df.dropna(inplace=True)
 
-    features = ['Percent_Change', 'MA5', 'MA10', 'Volume_Change']
+    features = ['Percent_Change', 'MA5', 'MA10', 'Volume_Change', 'High_Low_Spread']
     X = df[features]
     y = df['Target']
 
-    # Train model
+    # Train XGBoost model
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    model = XGBClassifier(n_estimators=100, learning_rate=0.1, max_depth=5, use_label_encoder=False, eval_metric='logloss')
     model.fit(X_train, y_train)
     preds = model.predict(X_test)
     accuracy = accuracy_score(y_test, preds)
 
-    # Predict next move
     next_prediction = model.predict(X.tail(1))
     movement = "🔼 UP" if next_prediction[0] == 1 else "🔽 DOWN"
 
+    # Candlestick chart
     st.subheader("Candlestick Chart")
     fig = go.Figure(data=[go.Candlestick(x=df['Date'],
-                    open=df['Open'], high=df['High'],
-                    low=df['Low'], close=df['Close'])])
+                                         open=df['Open'],
+                                         high=df['High'],
+                                         low=df['Low'],
+                                         close=df['Close'])])
     fig.update_layout(title=f"Candlestick Chart - {symbol}", xaxis_rangeslider_visible=False)
     st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("Close Price Histogram")
-    fig_hist, ax = plt.subplots(figsize=(6, 3))
-    sns.histplot(df['Close'], bins=30, kde=True, ax=ax)
-    ax.set_title("Close Price Distribution")
-    st.pyplot(fig_hist)
+    # Side-by-side Histogram and Line Chart
+    st.subheader("Close Price Distribution & Trend")
+    col1, col2 = st.columns(2)
 
+    with col1:
+        fig_hist, ax = plt.subplots(figsize=(6, 3))
+        sns.histplot(df['Close'], bins=30, kde=True, ax=ax)
+        ax.set_title("Histogram of Close Prices")
+        st.pyplot(fig_hist)
+
+    with col2:
+        fig_line, ax2 = plt.subplots(figsize=(6, 3))
+        ax2.plot(df['Date'], df['Close'], color='blue')
+        ax2.set_title("Close Price Trend")
+        ax2.set_xlabel("Date")
+        ax2.set_ylabel("Price")
+        plt.xticks(rotation=45)
+        st.pyplot(fig_line)
+
+    # Results
     st.subheader("Prediction Results")
     st.success(f"Predicted Next Move for {symbol}: {movement}")
     st.info(f"Model Accuracy: {accuracy * 100:.2f}%")
