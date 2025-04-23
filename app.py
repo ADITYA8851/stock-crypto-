@@ -10,10 +10,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
 st.set_page_config(page_title="Enhanced Finance Prediction App", layout="wide")
-st.title("📈 Enhanced Finance Prediction App")
+st.title("📈Finance Prediction App")
 
 # Extended stock options
-stock_options = ["AAPL", "GOOGL", "BTC-USD", "^BSESN", "ADANIENT.NS", "^NSEI"]
+stock_options = ["APPLE INC.", "ALPHABET INC.", "BTC-USD", "^BSE SENSEX", "ADANIENT.NS", "^NIFTY 50"]
 stocks = st.multiselect("Select stocks to analyze", stock_options, default=stock_options[:2])
 period = st.selectbox("Select historical period", ["1mo", "3mo", "6mo", "1y", "2y"], index=2)
 
